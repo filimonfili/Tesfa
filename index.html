@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TESFA - AI Therapy MVP</title>
+    <!-- Use Tailwind CSS for a modern, responsive design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .chat-container {
+            height: calc(100vh - 120px); /* Adjust height for a better mobile experience */
+            -ms-overflow-style: none; /* for Internet Explorer, Edge */
+            scrollbar-width: none; /* for Firefox */
+        }
+        .chat-container::-webkit-scrollbar {
+            display: none; /* for Chrome, Safari, and Opera */
+        }
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #3b82f6;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .bot-message {
+            background-color: #ffffff;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #f3f4f6;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading-dot {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
+
+    <!-- Main Application Container -->
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-2xl h-[calc(100vh-32px)] flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-green-400 to-green-700 text-white p-6 rounded-t-xl flex items-center justify-center shadow-md">
+            <h1 class="text-2xl font-semibold">ተስፋ</h1>
+        </div>
+        <!-- Logo container is now placed between header and chat history -->
+        <div id="logo-container" class="py-12 transition-opacity duration-700 ease-in-out">
+            <!-- Simple SVG logo - a heart. Changed color for visibility on white background. -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-16 h-16 text-gray-400 mx-auto">
+                <path d="M11.645 20.917c-.183.08-.398.08-.58 0a.75.75 0 01-.372-.51c-.015-.084-.038-.17-.06-.255-1.082-4.103-3.667-7.234-7.5-9.395a1.75 1.75 0 01-.29-2.029 1.75 1.75 0 011.666-.827h.001c2.148 0 4.296 1.054 5.926 2.404.974.793 1.503 1.258 1.954 1.258.452 0 .981-.465 1.954-1.258 1.63-1.35 3.778-2.404 5.926-2.404h.001a1.75 1.75 0 011.666.827 1.75 1.75 0 01-.29 2.029c-3.833 2.16-6.418 5.291-7.5 9.395-.022.085-.045.171-.06.255a.75.75 0 01-.372.51z" />
+            </svg>
+        </div>
+
+        <!-- Chat History Display -->
+        <div id="chat-history" class="chat-container flex-1 p-6 space-y-4 overflow-y-auto flex flex-col-reverse">
+            <!-- Messages will be injected here by JavaScript -->
+        </div>
+
+        <!-- Input and Send Button Area -->
+        <div class="p-4 bg-white border-t border-gray-200">
+            <form id="chat-form" class="flex items-center space-x-4">
+                <input
+                    type="text"
+                    id="user-input"
+                    class="flex-1 p-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="ወንድ ነህ ወይስ ሴት?"
+                    autocomplete="off"
+                >
+                <button
+                    type="submit"
+                    id="send-button"
+                    class="bg-gradient-to-r from-green-400 to-green-700 text-white p-3 rounded-full w-12 h-12 flex items-center justify-center  transition-colors disabled:bg-gray-400"
+                            
+                    >
+                    <!-- Simple SVG send icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                    </svg>
+                </button>
+            </form>
+            <div id="loading-indicator" class="mt-2 text-center text-gray-500 hidden">
+                <span class="inline-block w-2 h-2 bg-blue-600 rounded-full mx-1 loading-dot"></span>
+                <span class="inline-block w-2 h-2 bg-blue-600 rounded-full mx-1 loading-dot"></span>
+                <span class="inline-block w-2 h-2 bg-blue-600 rounded-full mx-1 loading-dot"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatHistory = document.getElementById('chat-history');
+        const sendButton = document.getElementById('send-button');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const logoContainer = document.getElementById('logo-container');
+
+        // Initial chat history starts empty
+        let chat = [];
+        let conversationStep = 0; // 0: gender, 1: religion, 2: problem, 3+: normal conversation
+        let userLanguage = "";
+        let userReligion = "";
+
+        // API key is left as an empty string. The Canvas environment will inject it at runtime.
+        const apiKey = "AIzaSyDZIe6Gl4uKuDTjdG-qsoRIh4aZQ7J-W8Y";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        // Function to create a message element
+        function createMessageElement(text, role) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            if (role === 'user') {
+                messageDiv.classList.add('user-message');
+            } else {
+                messageDiv.classList.add('bot-message');
+            }
+            messageDiv.textContent = text;
+            return messageDiv;
+        }
+
+        // Function to display messages and scroll to the bottom
+        function displayMessage(text, role) {
+            const messageEl = createMessageElement(text, role);
+            chatHistory.prepend(messageEl);
+        }
+
+        // Function to call the Gemini API for a general response
+        async function getGeminiResponse() {
+            const systemPrompt = `
+                You are a kind, empathetic, and supportive AI therapy assistant. Your primary goal is to listen, provide compassionate responses, and offer general coping strategies. You must never provide professional medical or psychological advice. Always encourage the user to seek help from a qualified professional if their situation is serious or persistent.
+
+                You must communicate in either Amharic or Tigrinya, based on the user's input. Detect the language of the user's message and respond in that same language. Your tone should be gentle, warm, and non-judgmental.
+            `;
+
+            const payload = {
+                contents: chat,
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('API Error:', errorData);
+                    throw new Error(`API returned ${response.status}: ${JSON.stringify(errorData)}`);
+                }
+
+                const result = await response.json();
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                return text;
+            } catch (error) {
+                console.error('Fetch error:', error);
+                return userLanguage === 'amharic' ? "ይቅርታ፣ በአሁኑ ጊዜ ምላሽ መስጠት አልቻልኩም። እባክዎ እንደገና ይሞክሩ።" : "ይቕረታ፣ ኣብዚ እዋንዚ መልሲ ክህብ ኣይከኣልኩን። በጃኻ እንደገና ፈትኖ።";
+            }
+        }
+        
+        // Function to call the Gemini API for a religious verse
+        async function getGeminiVerse(userProblem, language, religion) {
+            const languageMap = {
+                amharic: {
+                    christian: "አማርኛ",
+                    muslim: "አማርኛ"
+                },
+                tigrinya: {
+                    christian: "ትግርኛ",
+                    muslim: "ትግርኛ"
+                }
+            };
+            const religionMap = {
+                christian: {
+                    amharic: "መጽሐፍ ቅዱስ",
+                    tigrinya: "መጽሓፍ ቅዱስ"
+                },
+                muslim: {
+                    amharic: "ቁርኣን",
+                    tigrinya: "ቁርኣን"
+                }
+            };
+
+            const versePrompt = `Based on the following user problem: "${userProblem}", provide one comforting and relevant verse from the ${religionMap[religion][language]} in ${languageMap[language][religion]}. Only provide the verse text and its reference, nothing else.`;
+            
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: versePrompt }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: {
+                    parts: [{ text: "You are a specialized AI assistant that only provides single, relevant religious verses from the requested scripture and language based on the user's described problem. Do not provide any other text." }]
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Verse API Error:', errorData);
+                    // Return a specific error message instead of null
+                    return language === 'amharic' ? "ይቅርታ፣ ከሃይማኖት ጽሑፍ ጥቅስ ማግኘት አልቻልኩም።" : "ይቕረታ፣ ካብ ሃይማኖታዊ ጽሑፍ ጥቕሲ ክረክብ ኣይከኣልኩን።";
+                }
+
+                const result = await response.json();
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                return text;
+
+            } catch (error) {
+                console.error('Verse Fetch Error:', error);
+                // Return a specific error message instead of null
+                return language === 'amharic' ? "ይቅርታ፣ ከሃይማኖት ጽሑፍ ጥቅስ ማግኘት አልቻልኩም።" : "ይቕረታ፣ ካብ ሃይማኖታዊ ጽሑፍ ጥቕሲ ክረክብ ኣይከኣልኩን።";
+            }
+        }
+
+        // Handle form submission
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userPrompt = userInput.value.trim();
+            if (!userPrompt) return;
+
+            displayMessage(userPrompt, 'user');
+            userInput.value = '';
+
+        // Hide the logo on the first user message
+            if (conversationStep === 0) {
+                logoContainer.classList.add('opacity-0');
+                setTimeout(() => {
+                    logoContainer.classList.add('hidden');
+                }, 700);
+            }
+            
+            // Disable input while processing
+            sendButton.disabled = true;
+            userInput.disabled = true;
+            loadingIndicator.classList.remove('hidden');
+
+            const lowerCasePrompt = userPrompt.toLowerCase();
+            let botResponse;
+
+            if (conversationStep === 0) {
+                // Step 0: User answers gender question
+                const amharicBoyWords = ["ወንድ", "ወንድ ልጅ", "male", "he", "ወዲ","wend"];
+                const amharicGirlWords = ["ሴት", "ሴት ልጅ", "female", "she", "ጓል","set"];
+                const tigrinyaBoyWords = ["ወዲ", "ወርቂ", "male", "he","wend"];
+                const tigrinyaGirlWords = ["ጓል", "female", "she","set"];
+
+                if (amharicBoyWords.some(word => lowerCasePrompt.includes(word))) {
+                    botResponse = "ሰላም ወንድሜ! ስላናገረኝ ደስ ብሎኛል:: እስኪ ስለ ሃይማኖትህ ንገረኝ? ክርስቲያን ነህ ወይስ ሙስሊም?";
+                    userLanguage = "amharic";
+                } else if (amharicGirlWords.some(word => lowerCasePrompt.includes(word))) {
+                    botResponse = "ሰላም እህቴ! ስላናገርሽኝ ደስ ብሎኛል:: እስኪ ስለ ሃይማኖትሽ ንገሪኝ? ክርስቲያን ነሽ ወይስ ሙስሊም?";
+                    userLanguage = "amharic";
+                } else if (tigrinyaBoyWords.some(word => lowerCasePrompt.includes(word))) {
+                    botResponse = "ሰላም ወዲ፣ ሕጉስ እየ ዘለና ንዛረብ:: እስኪ ብዛዕባ ሃይማኖትካ ንገረኒ? ክርስትያን ዲኻ ወይስ ሙስሊም?";
+                    userLanguage = "tigrinya";
+                } else if (tigrinyaGirlWords.some(word => lowerCasePrompt.includes(word))) {
+                    botResponse = "ሰላም ጓል፣ ሕጉስ እየ ዘለና ንዛረብ:: እስኪ ብዛዕባ ሃይማኖትኪ ንገሪኒ? ክርስትያን ዲኺ ወይስ ሙስሊም?";
+                    userLanguage = "tigrinya";
+                } else {
+                    botResponse = "እባክዎ ስለ ጾታዎ ይንገሩኝ። ወንድ ነህ ወይስ ሴት?";
+                }
+                
+                conversationStep = 1;
+                displayMessage(botResponse, 'model');
+                userInput.placeholder = "የሃይማኖትህን ስም ፃፍ።";
+
+                sendButton.disabled = false;
+                userInput.disabled = false;
+                loadingIndicator.classList.add('hidden');
+                
+            } else if (conversationStep === 1) {
+                // Step 1: User answers religion question
+                const christianWords = ["ክርስቲያን", "christian", "christ", "church", "ክርስትያን"];
+                const muslimWords = ["ሙስሊም", "muslim", "islam", "mosque"];
+
+                if (christianWords.some(word => lowerCasePrompt.includes(word))) {
+                    userReligion = "christian";
+                } else if (muslimWords.some(word => lowerCasePrompt.includes(word))) {
+                    userReligion = "muslim";
+                } else {
+                    userReligion = "none";
+                }
+                
+                if (userLanguage === "amharic") {
+                     botResponse = "ስለ ሃይማኖትህ ስላሳወቅከኝ አመሰግናለሁ:: አሁን ደግሞ በምን ልረዳህ እችላለሁ?";
+                     userInput.placeholder = "ችግርህን ንገረኝ...";
+                } else {
+                     botResponse = "ብትሕጓስ ምሳይ ብዛዕባ ሃይማኖትካ ስለ ዝነገርካኒ ደስ ይበለኒ:: ሕጂ ብኸመይ ክሕግዘካ ይኽእል?";
+                     userInput.placeholder = "ችግርህን ንገረኝ...";
+                }
+
+                conversationStep = 2; // Move to the problem-solving step
+                displayMessage(botResponse, 'model');
+
+                sendButton.disabled = false;
+                userInput.disabled = false;
+                loadingIndicator.classList.add('hidden');
+                
+            } else {
+                // Steps 2 and beyond: User states their problem.
+                chat.push({ role: "user", parts: [{ text: userPrompt }] });
+
+                // Get general AI response first
+                const generalResponse = await getGeminiResponse();
+                displayMessage(generalResponse, 'model');
+                chat.push({ role: "model", parts: [{ text: generalResponse }] });
+                
+                // Get religious verse if applicable
+                if (userReligion !== "none") {
+                    const verse = await getGeminiVerse(userPrompt, userLanguage, userReligion);
+                    if (verse) {
+                        setTimeout(() => {
+                            displayMessage(verse, 'model');
+                        }, 1000); // Small delay for better flow
+                    }
+                }
+                
+                // Re-enable input
+                sendButton.disabled = false;
+                userInput.disabled = false;
+                loadingIndicator.classList.add('hidden');
+                userInput.focus();
+            }
+        });
+
+        // Display the initial bot message on load
+        window.addEventListener('load', () => {
+             displayMessage("ሰላም! ዛሬ እንዴት ልረዳዎ እችላለሁ? ወንድ ነህ ወይስ ሴት?", 'model');
+        });
+
+    </script>
+</body>
+</html>
